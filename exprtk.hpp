@@ -54,6 +54,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "exprtk_func.h"
 
 
 namespace exprtk
@@ -491,7 +492,7 @@ namespace exprtk
 
       static const std::string assignment_ops_list[] =
                                   {
-                                    ":=", "+=", "-=",
+                                    "=", "+=", "-=",
                                     "*=", "/=", "%="
                                   };
 
@@ -500,7 +501,7 @@ namespace exprtk
       static const std::string inequality_ops_list[] =
                                   {
                                      "<",  "<=", "==",
-                                     "=",  "!=", "<>",
+                                     "===",  "!=", "<>",
                                     ">=",  ">"
                                   };
 
@@ -2162,7 +2163,7 @@ namespace exprtk
                case e_number      : return "NUMBER";
                case e_symbol      : return "SYMBOL";
                case e_string      : return "STRING";
-               case e_assign      : return ":=";
+               case e_assign      : return "=";
                case e_addass      : return "+=";
                case e_subass      : return "-=";
                case e_mulass      : return "*=";
@@ -2175,7 +2176,7 @@ namespace exprtk
                case e_gte         : return ">=";
                case e_lt          : return "<";
                case e_gt          : return ">";
-               case e_eq          : return "=";
+               //case e_eq          : return "===";
                case e_rbracket    : return ")";
                case e_lbracket    : return "(";
                case e_rsqrbracket : return "]";
@@ -2539,10 +2540,10 @@ namespace exprtk
 
                   if ((c0 == '<') && (c1 == '=') && (c2 == '>'))
                   {
-                     t.set_operator(token_t::e_swap, s_itr_, s_itr_ + 3, base_itr_);
-                     token_list_.push_back(t);
-                     s_itr_ += 3;
-                     return;
+                      t.set_operator(token_t::e_swap, s_itr_, s_itr_ + 3, base_itr_);
+                      token_list_.push_back(t);
+                      s_itr_ += 3;
+                      return;
                   }
                }
 
@@ -2553,7 +2554,6 @@ namespace exprtk
                else if ((c0 == '<') && (c1 == '>')) ttype = token_t::e_ne;
                else if ((c0 == '!') && (c1 == '=')) ttype = token_t::e_ne;
                else if ((c0 == '=') && (c1 == '=')) ttype = token_t::e_eq;
-               else if ((c0 == ':') && (c1 == '=')) ttype = token_t::e_assign;
                else if ((c0 == '<') && (c1 == '<')) ttype = token_t::e_shl;
                else if ((c0 == '>') && (c1 == '>')) ttype = token_t::e_shr;
                else if ((c0 == '+') && (c1 == '=')) ttype = token_t::e_addass;
@@ -2571,7 +2571,9 @@ namespace exprtk
                }
             }
 
-            if ('<' == c0)
+            if ('=' == c0)
+                t.set_operator(token_t::e_assign, s_itr_, s_itr_ + 1, base_itr_);
+            else if ('<' == c0)
                t.set_operator(token_t::e_lt , s_itr_, s_itr_ + 1, base_itr_);
             else if ('>' == c0)
                t.set_operator(token_t::e_gt , s_itr_, s_itr_ + 1, base_itr_);
@@ -3282,17 +3284,17 @@ namespace exprtk
 
             inline bool join(const lexer::token& t0, const lexer::token& t1, lexer::token& t)
             {
-               // ': =' --> ':='
-               if ((t0.type == lexer::token::e_colon) && (t1.type == lexer::token::e_eq))
-               {
-                  t.type     = lexer::token::e_assign;
-                  t.value    = ":=";
-                  t.position = t0.position;
+               //// ': =' --> ':='
+               //if ((t0.type == lexer::token::e_colon) && (t1.type == lexer::token::e_eq))
+               //{
+               //   t.type     = lexer::token::e_assign;
+               //   t.value    = ":=";
+               //   t.position = t0.position;
 
-                  return true;
-               }
+               //   return true;
+               //}
                // '+ =' --> '+='
-               else if ((t0.type == lexer::token::e_add) && (t1.type == lexer::token::e_eq))
+               if ((t0.type == lexer::token::e_add) && (t1.type == lexer::token::e_eq))
                {
                   t.type     = lexer::token::e_addass;
                   t.value    = "+=";
@@ -4604,7 +4606,7 @@ namespace exprtk
             case e_div    : return  "/"  ;
             case e_mod    : return  "%"  ;
             case e_pow    : return  "^"  ;
-            case e_assign : return ":="  ;
+            case e_assign : return "="  ;
             case e_addass : return "+="  ;
             case e_subass : return "-="  ;
             case e_mulass : return "*="  ;
@@ -4613,7 +4615,7 @@ namespace exprtk
             case e_lt     : return  "<"  ;
             case e_lte    : return "<="  ;
             case e_eq     : return "=="  ;
-            case e_equal  : return  "="  ;
+            case e_equal  : return "==="  ;
             case e_ne     : return "!="  ;
             case e_nequal : return "<>"  ;
             case e_gte    : return ">="  ;
@@ -15915,45 +15917,6 @@ namespace exprtk
 
    } // namespace details
 
-   class function_traits
-   {
-   public:
-
-      function_traits()
-      : allow_zero_parameters_(false),
-        has_side_effects_(true),
-        min_num_args_(0),
-        max_num_args_(std::numeric_limits<std::size_t>::max())
-      {}
-
-      inline bool& allow_zero_parameters()
-      {
-         return allow_zero_parameters_;
-      }
-
-      inline bool& has_side_effects()
-      {
-         return has_side_effects_;
-      }
-
-      std::size_t& min_num_args()
-      {
-         return min_num_args_;
-      }
-
-      std::size_t& max_num_args()
-      {
-         return max_num_args_;
-      }
-
-   private:
-
-      bool allow_zero_parameters_;
-      bool has_side_effects_;
-      std::size_t min_num_args_;
-      std::size_t max_num_args_;
-   };
-
    template <typename FunctionType>
    void enable_zero_parameters(FunctionType& func)
    {
@@ -15997,101 +15960,6 @@ namespace exprtk
    {
       func.max_num_args() = num_args;
    }
-
-   template <typename T>
-   class ifunction : public function_traits
-   {
-   public:
-
-      explicit ifunction(const std::size_t& pc)
-      : param_count(pc)
-      {}
-
-      virtual ~ifunction()
-      {}
-
-      #define empty_method_body                      \
-      {                                              \
-         return std::numeric_limits<T>::quiet_NaN(); \
-      }                                              \
-
-      inline virtual T operator() ()
-      empty_method_body
-
-       inline virtual T operator() (const T&)
-      empty_method_body
-
-       inline virtual T operator() (const T&,const T&)
-      empty_method_body
-
-       inline virtual T operator() (const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                  const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      inline virtual T operator() (const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&,
-                                   const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
-      empty_method_body
-
-      #undef empty_method_body
-
-      std::size_t param_count;
-   };
 
    template <typename T>
    class ivararg_function : public function_traits
@@ -20060,7 +19928,7 @@ namespace exprtk
          {
             switch (opr)
             {
-               case details::e_assign : return ":=";
+               case details::e_assign : return "=";
                case details::e_addass : return "+=";
                case details::e_subass : return "-=";
                case details::e_mulass : return "*=";
@@ -20090,7 +19958,7 @@ namespace exprtk
                case details::e_lt    : return  "<";
                case details::e_lte   : return "<=";
                case details::e_eq    : return "==";
-               case details::e_equal : return  "=";
+               case details::e_equal : return "===";
                case details::e_ne    : return "!=";
                case details::e_nequal: return "<>";
                case details::e_gte   : return ">=";
@@ -24428,7 +24296,7 @@ namespace exprtk
                set_error(
                   make_error(parser_error::e_syntax,
                              current_token(),
-                             "ERR147 - Expected ':=' as part of vector definition",
+                             "ERR147 - Expected '=' as part of vector definition",
                              exprtk_error_location));
 
                return error_node();
